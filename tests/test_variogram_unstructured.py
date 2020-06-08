@@ -244,16 +244,17 @@ class TestVariogramUnstructured(unittest.TestCase):
         )
 
     def test_angles_2D_x2x(self):
+        """
+        test case 1.)
+           all along x axis on x axis
+        """
 
         x = self.test_data_rotation_1['x']
         field = self.test_data_rotation_1['field']
         gamma_exp = self.test_data_rotation_1['gamma']
         bins = self.test_data_rotation_1['bins']
         y = np.zeros_like(x)
-        
-        # test case 1.)
-        #    all along x axis on x axis
-        
+
         bin_centres, gamma = vario_estimate_unstructured(
             (x, y),
             field,
@@ -265,6 +266,10 @@ class TestVariogramUnstructured(unittest.TestCase):
             self.assertAlmostEqual(gamma_exp[i], gamma[i], places=3)
 
     def test_angles_2D_y2x(self):
+        """
+        test case 2.)
+        all along y axis on y axis but calculation for x axis
+        """
 
         x = self.test_data_rotation_1['x']
         field = self.test_data_rotation_1['field']
@@ -272,8 +277,6 @@ class TestVariogramUnstructured(unittest.TestCase):
         bins = self.test_data_rotation_1['bins']
         y = np.zeros_like(x)
 
-        # test case 2.)
-        #    all along y axis on y axis but calculation for x axis
             
         bin_centres, gamma = vario_estimate_unstructured(
             (y, x),
@@ -286,6 +289,10 @@ class TestVariogramUnstructured(unittest.TestCase):
             self.assertAlmostEqual(0, gamma[i], places=3)
             
     def test_angles_2D_y2y(self):
+        """
+        test case 3.)
+           all along y axis on y axis and calculation for y axis
+        """
 
         x = self.test_data_rotation_1['x']
         field = self.test_data_rotation_1['field']
@@ -293,9 +300,7 @@ class TestVariogramUnstructured(unittest.TestCase):
         bins = self.test_data_rotation_1['bins']
         y = np.zeros_like(x)
 
-        # test case 3.)
-        #    all along y axis on y axis and calculation for y axis
-            
+
         bin_centres, gamma = vario_estimate_unstructured(
             (y, x),
             field,
@@ -307,6 +312,10 @@ class TestVariogramUnstructured(unittest.TestCase):
             self.assertAlmostEqual(gamma_exp[i], gamma[i], places=3)
 
     def test_angles_2D_xy2x(self):
+        """
+        test case 4.)
+           data along 45deg axis but calculation for x axis
+        """
 
         x = self.test_data_rotation_1['x']
         field = self.test_data_rotation_1['field']
@@ -314,10 +323,7 @@ class TestVariogramUnstructured(unittest.TestCase):
         bins = self.test_data_rotation_1['bins']
         y = np.zeros_like(x)
 
-
-        # test case 4.)
-        #    data along 45deg axis but calculation for x axis
-            
+                    
         ccos, csin = np.cos(np.pi/4.), np.sin(np.pi/4.)
         
         xr = [xx * ccos - yy * csin for xx, yy in zip(x, y)]
@@ -334,6 +340,10 @@ class TestVariogramUnstructured(unittest.TestCase):
             self.assertAlmostEqual(0, gamma[i], places=3)
             
     def test_angles_2D_xy2xy(self):
+        """
+        test case 5.)
+           data along 45deg axis and calculation for 45deg
+        """
 
         x = self.test_data_rotation_1['x']
         field = self.test_data_rotation_1['field']
@@ -341,9 +351,6 @@ class TestVariogramUnstructured(unittest.TestCase):
         bins = self.test_data_rotation_1['bins']
         y = np.zeros_like(x)
 
-        # test case 5.)
-        #    data along 45deg axis and calculation for 45deg
-            
         ccos, csin = np.cos(np.pi/4.), np.sin(np.pi/4.)
         
         xr = [xx * ccos - yy * csin for xx, yy in zip(x, y)]
@@ -358,6 +365,196 @@ class TestVariogramUnstructured(unittest.TestCase):
         
         for i in range(gamma.size):
             self.assertAlmostEqual(gamma_exp[i], gamma[i], places=3)
-            
+
+    def test_angles_count_2D_case_1(self):
+        """
+            test case counts 1.) 
+            test if the data pairs count corresponds to include/exclude behaviour
+            data at +45deg and setting mask to +45deg +/- 10deg --> should find points
+        """
+
+        x = self.test_data_rotation_1['x']
+        field = self.test_data_rotation_1['field']
+        gamma_exp = self.test_data_rotation_1['gamma']
+        bins = self.test_data_rotation_1['bins']
+        y = np.zeros_like(x)
+
+        angle_rad = np.deg2rad(45)
+        ccos, csin = np.cos(angle_rad), np.sin(angle_rad)
+        
+        xr = [xx * ccos - yy * csin for xx, yy in zip(x, y)]
+        yr = [xx * csin + yy * ccos for xx, yy in zip(x, y)]
+        
+        bin_centres, gamma, counts = vario_estimate_unstructured(
+            (xr, yr),
+            field,
+            bins,
+            angles_tol=np.deg2rad(10.0),
+            angles=[angle_rad],
+            return_counts=True
+        )
+
+        self.assertNotEqual(0, np.sum(counts), "expected to find some points pairs in angle direction, but none were found")
+
+
+    def test_angles_count_2D_case_2(self):
+        """
+            test case counts 2.) 
+            test if the data pairs count corresponds to include/exclude behaviour
+            data at +45deg and setting mask to +54.9deg +/- 10deg --> should find points
+        """
+
+        x = self.test_data_rotation_1['x']
+        field = self.test_data_rotation_1['field']
+        gamma_exp = self.test_data_rotation_1['gamma']
+        bins = self.test_data_rotation_1['bins']
+        y = np.zeros_like(x)
+
+        angle_rad = np.deg2rad(45)
+        ccos, csin = np.cos(angle_rad), np.sin(angle_rad)
+        
+        xr = [xx * ccos - yy * csin for xx, yy in zip(x, y)]
+        yr = [xx * csin + yy * ccos for xx, yy in zip(x, y)]
+        
+        bin_centres, gamma, counts = vario_estimate_unstructured(
+            (xr, yr),
+            field,
+            bins,
+            angles_tol=np.deg2rad(10.0),
+            angles=[angle_rad + np.deg2rad(9.9)],
+            return_counts=True
+        )
+        
+        self.assertNotEqual(0, np.sum(counts), "expected to find some points pairs in angle direction, but none were found")
+
+
+    def test_angles_count_2D_case_3(self):
+        """
+            test case counts 3.) 
+            test if the data pairs count corresponds to include/exclude behaviour
+            data at +45deg and setting mask to +55.1deg +/- 10deg --> should NOT find points
+        """
+
+        x = self.test_data_rotation_1['x']
+        field = self.test_data_rotation_1['field']
+        gamma_exp = self.test_data_rotation_1['gamma']
+        bins = self.test_data_rotation_1['bins']
+        y = np.zeros_like(x)
+
+        angle_rad = np.deg2rad(45)
+        ccos, csin = np.cos(angle_rad), np.sin(angle_rad)
+        
+        xr = [xx * ccos - yy * csin for xx, yy in zip(x, y)]
+        yr = [xx * csin + yy * ccos for xx, yy in zip(x, y)]
+        
+        bin_centres, gamma, counts = vario_estimate_unstructured(
+            (xr, yr),
+            field,
+            bins,
+            angles_tol=np.deg2rad(10.0),
+            angles=[angle_rad + np.deg2rad(10.1)],
+            return_counts=True
+        )
+        
+        self.assertEqual(0, np.sum(counts), "expected to find NO points pairs in angle direction, but some were found")
+
+
+    def test_angles_2D_caching(self):
+        """
+        generate a dataset with rotated anisotrope variogram and try to 
+        reconstruct it using unstructured
+        """
+        do_timeit = False
+        if do_timeit:
+            import timeit
+
+        x = y = np.arange(0, 50)
+        model = gs.Exponential(dim=2, var=1, len_scale=[12.0, 3.0], angles=np.pi / 8)
+        srf = gs.SRF(model, seed=20170519)
+        srf.structured([x, y])
+
+        (gridx, gridy) = srf.pos
+        val = srf.field.copy()
+
+        X, Y = np.meshgrid(gridx, gridy)
+
+        np.random.seed(20170519)
+        idx = np.random.choice(X.size, 1000)
+        #idx = range(0, X.size, 3)
+        x = X.flatten()[idx]
+        y = Y.flatten()[idx]
+        field = val.flatten()[idx]
+
+        fun = lambda bins: vario_estimate_unstructured(
+                (x, y),
+                field,
+                bins,
+                angles=[np.pi / 8.]
+            )
+        fun_cached = lambda bins: vario_estimate_unstructured(
+                (x, y),
+                field,
+                bins,
+                angles=[np.pi / 8.], 
+                use_caching=True
+            )
+
+        for bin_steps in [10, 5, 2, 1]:
+            bins = np.arange(0, 20, bin_steps)
+
+            if do_timeit:
+                def fn():
+                    fun(bins)
+                def fnc():
+                    fun_cached(bins)
+                t_no_cache = timeit.timeit(fn, number=30) / 30.
+                t_cached = timeit.timeit(fnc, number=30) / 30.
+                print(f"len(bins) {bins.size}: t_no_cache {t_no_cache} | t_cached {t_cached}")
+                #self.assertTrue(t_no_cache > t_cached)
+
+            bin_centres, gamma = fun(bins)
+            bin_centres_c, gamma_c = fun_cached(bins)
+        
+
+
+        for i in range(gamma.size):
+            self.assertAlmostEqual(bin_centres[i], bin_centres_c[i], places=3)
+            self.assertAlmostEqual(gamma[i], gamma_c[i], places=3)
+
+
+    def test_angles_2D_vario_based(self):
+        """
+        generate a dataset with rotated anisotrope variogram and try to 
+        reconstruct it using unstructured
+        """
+
+        x = y = np.arange(0, 50)
+        model = gs.Exponential(dim=2, var=1, len_scale=[12.0, 3.0], angles=np.pi / 8)
+        srf = gs.SRF(model, seed=20170519)
+        srf.structured([x, y])
+
+        (gridx, gridy) = srf.pos
+        val = srf.field.copy()
+
+        X, Y = np.meshgrid(gridx, gridy)
+
+        np.random.seed(20170519)
+        idx = np.random.choice(X.size, 1000)
+        #idx = range(0, X.size, 3)
+        x = X.flatten()[idx]
+        y = Y.flatten()[idx]
+        field = val.flatten()[idx]
+
+        bins = np.arange(20)
+        bin_centres, gamma = vario_estimate_unstructured(
+            (x, y),
+            field,
+            bins,
+            angles=[np.pi / 8.]
+        )
+        
+        for i in range(gamma.size):
+            self.assertAlmostEqual(gamma_exp[i], gamma[i], places=3)
+
 if __name__ == "__main__":
     unittest.main()
