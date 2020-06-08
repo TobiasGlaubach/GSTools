@@ -229,11 +229,12 @@ def unstructured(
 
     cdef vector[double] variogram = vector[double](len(bin_edges)-1, 0.0)
     cdef vector[double] dists_cache
-    cdef vector[bint] angles_test_cache
+    cdef vector[bint] angles_test_cache, angles_cache_is_calc
 
     if use_caching:
         dists_cache = vector[double](cache_size, 0.0)
         angles_test_cache = vector[bint](cache_size, 0)
+        angles_cache_is_calc = vector[bint](cache_size, 0)
 
     cdef vector[long] counts = vector[long](len(bin_edges)-1, False)
     
@@ -244,8 +245,6 @@ def unstructured(
         for j in range(j_max):
             for k in range(j+1, k_max):
                 dists_cache[cnt] = distance(x, y, z, k, j)
-                if angles is not None:
-                    angles_test_cache[cnt] = angle_test(x, y, z, angles, angles_tol, k, j)
                 cnt += 1
 
         for i in range(i_max):
@@ -253,6 +252,9 @@ def unstructured(
             for j in range(j_max):
                 for k in range(j+1, k_max):
                     if dists_cache[cnt] >= bin_edges[i] and dists_cache[cnt] < bin_edges[i+1]:
+                        if angles is not None and not angles_cache_is_calc[cnt]:
+                            angles_test_cache[cnt] = angle_test(x, y, z, angles, angles_tol, k, j)
+                            angles_cache_is_calc[cnt] = True
                         if angles is None or angles_test_cache[cnt]:
                             counts[i] += 1
                             variogram[i] += estimator_func(f[k] - f[j])
