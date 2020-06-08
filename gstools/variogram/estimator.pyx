@@ -172,7 +172,8 @@ def unstructured(
     const double[:] z=None,
     const double[:] angles=None,
     const double angles_tol=0.436332,
-    str estimator_type='m'
+    str estimator_type='m',
+    bint use_caching = False
 ):
     if x.shape[0] != f.shape[0]:
         raise ValueError('len(x) = {0} != len(f) = {1} '.
@@ -219,22 +220,58 @@ def unstructured(
     cdef int i_max = bin_edges.shape[0] - 1
     cdef int j_max = x.shape[0] - 1
     cdef int k_max = x.shape[0]
+    cdef int cache_size = 0
+
+    if use_caching:
+        for jj in range(j_max + 1):
+            cache_size += jj
+        # cache_size = np.sum(np.arange(j_max + 1))
 
     cdef vector[double] variogram = vector[double](len(bin_edges)-1, 0.0)
-    cdef vector[long] counts = vector[long](len(bin_edges)-1, 0)
-    cdef int i, j, k
+    cdef vector[double] dists_cache
+    cdef vector[bint] angles_test_cache
+
+    if use_caching:
+        dists_cache = vector[double](cache_size, 0.0)
+        angles_test_cache = vector[bint](cache_size, 0)
+
+    cdef vector[long] counts = vector[long](len(bin_edges)-1, False)
+    
     cdef DTYPE_t dist
-    for i in prange(i_max, nogil=True):
+    cdef int i, j, k, cnt
+    if use_caching:
+        cnt = 0
         for j in range(j_max):
             for k in range(j+1, k_max):
-                dist = distance(x, y, z, k, j)
-                if dist >= bin_edges[i] and dist < bin_edges[i+1]:
-                    if angles is None or angle_test(x, y, z, angles, angles_tol, k, j):
-                        counts[i] += 1
-                        variogram[i] += estimator_func(f[k] - f[j])
+                dists_cache[cnt] = distance(x, y, z, k, j)
+                if angles is not None:
+                    angles_test_cache[cnt] = angle_test(x, y, z, angles, angles_tol, k, j)
+                cnt += 1
 
+        for i in range(i_max):
+            cnt = 0
+            for j in range(j_max):
+                for k in range(j+1, k_max):
+                    if dists_cache[cnt] >= bin_edges[i] and dists_cache[cnt] < bin_edges[i+1]:
+                        if angles is None or angles_test_cache[cnt]:
+                            counts[i] += 1
+                            variogram[i] += estimator_func(f[k] - f[j])
+                    cnt += 1
+    else:
+        for i in prange(i_max, nogil=True):
+            for j in range(j_max):
+                for k in range(j+1, k_max):
+                    dist = distance(x, y, z, k, j)
+                    if dist >= bin_edges[i] and dist < bin_edges[i+1]:
+                        if angles is None or angle_test(x, y, z, angles, angles_tol, k, j):
+                            counts[i] += 1
+                            variogram[i] += estimator_func(f[k] - f[j])
+
+    # this is neccessary since normalize_func can and will change count
+    counts_ret = np.asarray(counts)
+    
     normalization_func(variogram, counts)
-    return np.asarray(variogram), np.asarray(counts)
+    return np.asarray(variogram), counts_ret
 
 
 def structured(const double[:,:,:] f, str estimator_type='m'):

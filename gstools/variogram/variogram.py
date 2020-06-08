@@ -42,7 +42,8 @@ def vario_estimate_unstructured(
     sampling_size=None,
     sampling_seed=None,
     estimator="matheron",
-    return_counts=False
+    return_counts=False,
+    use_caching=False
 ):
     r"""
     Estimates the variogram on a unstructured grid.
@@ -109,6 +110,14 @@ def vario_estimate_unstructured(
         if set to true, this function will also return the number of data 
         points found at each lag distance as a third return value
         Default: False
+    use_caching: class:`bool`, optional
+        choice between caching and parallel computation (parallel 
+        computation only works when GSTools was compiled with OpenMP flag) 
+        if set to true, the internal estimator will pre calculate 
+        a cache of angles and distances instead of running a loop in parallel.
+        If GSTools was not compiled with OpenMP, ths can speed up the calculation
+        process significantly, expecially for large len(bin_edges).
+        Default: False
     Returns
     -------
     :class:`tuple` of :class:`numpy.ndarray`
@@ -147,7 +156,7 @@ def vario_estimate_unstructured(
     cython_estimator = _set_estimator(estimator)
 
     estimates, counts = unstructured(
-            field, bin_edges, x, y, z, angles, angles_tol, estimator_type=cython_estimator
+            field, bin_edges, x, y, z, angles, angles_tol, estimator_type=cython_estimator, use_caching=use_caching
         )
 
     if return_counts:
